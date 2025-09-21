@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -89,6 +90,7 @@ func (h *Handler) CotacaoHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	defer cancelApi()
 	c, err := getCotacao(ctxApi, USDBRL)
 	if err != nil {
+		log.Printf("Erro ao realizar requisição para a API %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -98,6 +100,7 @@ func (h *Handler) CotacaoHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.SalvarCotacao(ctxDb, c)
 	if err != nil {
+		log.Printf("Erro ao salvar cotacao na base de dados %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
