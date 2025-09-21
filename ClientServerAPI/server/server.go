@@ -12,6 +12,10 @@ import (
 	"gorm.io/gorm"
 )
 
+type CotacaoResponse struct {
+	ValorCotacao string `json:"bid"`
+}
+
 type Cotacao struct {
 	gorm.Model
 	Code       string `json:"code"`
@@ -28,8 +32,8 @@ type Cotacao struct {
 }
 
 const (
-	cotacaoURL  = "https://economia.awesomeapi.com.br/json/last"
-	moedaUSDBRL = "USD-BRL"
+	cotacaoURL = "https://economia.awesomeapi.com.br/json/last"
+	USDBRL     = "USD-BRL"
 )
 
 type Repository struct {
@@ -63,12 +67,6 @@ func newHanlder(service Service) Handler {
 }
 
 func main() {
-
-	// db, err := sql.Open("sqlite3", "./app.db")
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	db, err := gorm.Open(sqlite.Open("cotacao.db"), &gorm.Config{})
 	if err != nil {
 		fmt.Println(err)
@@ -82,57 +80,64 @@ func main() {
 	handler := newHanlder(srv)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.CotacaoHandlerFunc)
+	mux.HandleFunc("/cotacao", handler.CotacaoHandlerFunc)
 	http.ListenAndServe(":8080", mux)
 }
 
 func (h *Handler) CotacaoHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancel()
-	c, err := getCotacao(ctx, moedaUSDBRL)
+	ctxApi, cancelApi := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancelApi()
+	c, err := getCotacao(ctxApi, USDBRL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("Cotacao:", c)
+	ctxDb, cancelDb := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancelDb()
 
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Millisecond)
-	defer cancel()
-
-	err = h.service.SalvarCotacao(ctx, c)
+	err = h.service.SalvarCotacao(ctxDb, c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	cotacaoResp := CotacaoResponse{
+		ValorCotacao: c.Bid,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(c)
+	json.NewEncoder(w).Encode(cotacaoResp)
 }
 
 func getCotacao(ctx context.Context, moeda string) (*Cotacao, error) {
-	req, err := http.Get(cotacaoURL + "/" + moeda)
+	type ConversaoCodeMap map[string]string
+	var internalApiCodeMap = ConversaoCodeMap{USDBRL: "USDBRL"}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", cotacaoURL+"/"+moeda, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer req.Body.Close()
 
-	res, err := io.ReadAll(req.Body)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	var mc map[string]Cotacao
-	err = json.Unmarshal(res, &mc)
+	err = json.Unmarshal(body, &mc)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("mapa: ", mc)
-
-	c := mc["USDBRL"]
-
+	c := mc[internalApiCodeMap[moeda]]
 	return &c, nil
 
 }
