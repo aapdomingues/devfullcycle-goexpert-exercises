@@ -6,15 +6,17 @@ import (
 	"net"
 	"net/http"
 
+	"CleanArch/configs"
+	"CleanArch/internal/event/handler"
+	"CleanArch/internal/infra/graph"
+	"CleanArch/internal/infra/grpc/pb"
+	"CleanArch/internal/infra/grpc/service"
+	"CleanArch/internal/infra/web/webserver"
+	"CleanArch/pkg/events"
+
 	graphql_handler "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/devfullcycle/20-CleanArch/configs"
-	"github.com/devfullcycle/20-CleanArch/internal/event/handler"
-	"github.com/devfullcycle/20-CleanArch/internal/infra/graph"
-	"github.com/devfullcycle/20-CleanArch/internal/infra/grpc/pb"
-	"github.com/devfullcycle/20-CleanArch/internal/infra/grpc/service"
-	"github.com/devfullcycle/20-CleanArch/internal/infra/web/webserver"
-	"github.com/devfullcycle/20-CleanArch/pkg/events"
+
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -43,12 +45,14 @@ func main() {
 	})
 
 	createOrderUseCase := NewCreateOrderUseCase(db, eventDispatcher)
+	//listOrdersUseCase := NewListOrdersUseCase(db)
 
-	webserver := webserver.NewWebServer(configs.WebServerPort)
+	ws := webserver.NewWebServer(configs.WebServerPort)
 	webOrderHandler := NewWebOrderHandler(db, eventDispatcher)
-	webserver.AddHandler("/order", webOrderHandler.Create)
+	ws.AddHandler(webserver.NewHandlerConfig("POST", "/order", webOrderHandler.Create))
+	ws.AddHandler(webserver.NewHandlerConfig("GET", "/order", webOrderHandler.ListAll))
 	fmt.Println("Starting web server on port", configs.WebServerPort)
-	go webserver.Start()
+	go ws.Start()
 
 	grpcServer := grpc.NewServer()
 	createOrderService := service.NewOrderService(*createOrderUseCase)

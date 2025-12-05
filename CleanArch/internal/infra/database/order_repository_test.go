@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/devfullcycle/20-CleanArch/internal/entity"
+	"CleanArch/internal/entity"
+
 	"github.com/stretchr/testify/suite"
 
 	// sqlite3
@@ -48,4 +49,26 @@ func (suite *OrderRepositoryTestSuite) TestGivenAnOrder_WhenSave_ThenShouldSaveO
 	suite.Equal(order.Price, orderResult.Price)
 	suite.Equal(order.Tax, orderResult.Tax)
 	suite.Equal(order.FinalPrice, orderResult.FinalPrice)
+}
+
+func (suite *OrderRepositoryTestSuite) TestFindAllOrders() {
+	repo := NewOrderRepository(suite.Db)
+
+	// order 1
+	order, err := entity.NewOrder("123", 10.0, 2.0)
+	suite.NoError(err)
+	suite.NoError(order.CalculateFinalPrice())
+	err = repo.Save(order)
+	suite.NoError(err)
+
+	// order 2
+	order2, err := entity.NewOrder("456", 5.0, 3.0)
+	suite.NoError(err)
+	suite.NoError(order2.CalculateFinalPrice())
+	err = repo.Save(order2)
+	suite.NoError(err)
+
+	orders, err := repo.FindAll()
+	suite.NoError(err)
+	suite.Len(orders, 2)
 }

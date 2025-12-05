@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/devfullcycle/20-CleanArch/internal/entity"
-	"github.com/devfullcycle/20-CleanArch/internal/usecase"
-	"github.com/devfullcycle/20-CleanArch/pkg/events"
+	"CleanArch/internal/entity"
+	"CleanArch/internal/usecase"
+	"CleanArch/pkg/events"
 )
 
 type WebOrderHandler struct {
@@ -37,6 +37,21 @@ func (h *WebOrderHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	createOrder := usecase.NewCreateOrderUseCase(h.OrderRepository, h.OrderCreatedEvent, h.EventDispatcher)
 	output, err := createOrder.Execute(dto)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = json.NewEncoder(w).Encode(output)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *WebOrderHandler) ListAll(w http.ResponseWriter, r *http.Request) {
+	listOrders := usecase.NewListOrdersUseCase(h.OrderRepository)
+
+	output, err := listOrders.Execute()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
