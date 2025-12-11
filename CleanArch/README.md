@@ -22,35 +22,13 @@ Após o clone, execute:
 go mod tidy
 ```
 
-### 2️⃣ Subir os containers necessários
+### 2️⃣ Executar o comando makefile para iniciar todo o ambiente
 
 ```sh
-docker-compose up -d
+make init
 ```
 
-Isso iniciará os serviços auxiliares exigidos pela aplicação (banco de dados e rabbitMQ).
-
-### 3️⃣ Executar as migrations
-
-```sh
-make migrate
-```
-
-Esse comando criará automaticamente a(s) tabela(s) necessárias para o funcionamento da aplicação.
-
-### ▶️ Executando a Aplicação
-
-Navegue até o diretório principal do módulo:
-
-```sh
-cd cmd/ordersystem/
-```
-
-E execute:
-
-```sh
-go run main.go wire_gen.go
-```
+Isso iniciará todos os serviços auxiliares exigidos pela aplicação (banco de dados e rabbitMQ), aplicará a migration necessária e por último subirá a aplicação.
 
 A aplicação estará pronta para receber requisições.
 
@@ -82,3 +60,10 @@ query queryOrders{
 - GRPC
 
 Você pode utilizar o próprio client Evans para as chamadas GRPC.
+
+```
+evans -r repl
+  package pb
+    service OrderService
+      call ListOrders
+```

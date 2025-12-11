@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"CleanArch/configs"
 	"CleanArch/internal/event/handler"
@@ -78,13 +80,23 @@ func main() {
 }
 
 func getRabbitMQChannel() *amqp.Channel {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	if err != nil {
-		panic(err)
-	}
+	conn := connectWithRetry("amqp://guest:guest@localhost:5672/")
 	ch, err := conn.Channel()
 	if err != nil {
 		panic(err)
 	}
 	return ch
+}
+
+func connectWithRetry(url string) *amqp.Connection {
+	for {
+		conn, err := amqp.Dial(url)
+		if err == nil {
+			log.Println("✅ Conectado ao RabbitMQ")
+			return conn
+		}
+
+		log.Printf("Erro ao conectar no RabbitMQ: %v. Tentando novamente em 3s...\n", err)
+		time.Sleep(3 * time.Second)
+	}
 }

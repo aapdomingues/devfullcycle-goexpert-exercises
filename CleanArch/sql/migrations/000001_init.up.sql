@@ -1,4 +1,4 @@
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id   varchar(255)  NOT NULL PRIMARY KEY,
   price float NOT NULL,
   tax float NOT NULL,
