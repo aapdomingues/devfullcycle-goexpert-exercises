@@ -1,15 +1,33 @@
-package server
+package service
 
 import (
+	"CloudRun/server/cmd/internal/config"
+	"CloudRun/server/cmd/internal/httpclient"
+
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
-type WheaterApiResponse struct {
+var (
+	ErrCepInvalid         = errors.New("invalid zipcode")
+	ErrCepNotFound        = errors.New("can not find zipcode")
+	ErrWeatherCityInvalid = errors.New("invalid city")
+)
+
+type WeatherServiceInterface interface {
+	GetWeather(ctx context.Context, cep string) (Weather, error)
+}
+
+type WeatherService struct {
+	cfg    *config.Config
+	client httpclient.HTTPClient
+}
+
+type WeatherApiResponse struct {
 	Location Location `json:"location"`
 	Current  Current  `json:"current"`
 }
@@ -32,7 +50,7 @@ type Current struct {
 	TempF            float64 `json:"temp_f"`
 }
 
-type Wheater struct {
+type Weather struct {
 	Celsius    float64 `json:"temp_C"`
 	Fahrenheit float64 `json:"temp_F"`
 	Kelvin     float64 `json:"temp_K"`
@@ -48,59 +66,50 @@ type City struct {
 	Unidade     string `json:"unidade"`
 	Ibge        string `json:"ibge"`
 	Gia         string `json:"gia"`
+	Erro        bool   `json:"erro"`
 }
 
-var (
-	viaCepApiUrl  = "https://viacep.com.br/ws"
-	wheaterApiUrl = "http://api.weatherapi.com/v1/current.json"
-	// ?key=9186a23014e94b3d97e01725263101&q=London&aqi=no
-	API_KEY = "9186a23014e94b3d97e01725263101" //TODO - Mover para um lugar seguro
-)
-
-func GetWheaterByCityHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancelApi := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelApi()
-
-	cepParam := r.URL.Query().Get("cep")
-	if cepParam == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+func NewWeatherService(cfg *config.Config, client httpclient.HTTPClient) *WeatherService {
+	return &WeatherService{
+		cfg:    cfg,
+		client: client,
 	}
+}
 
-	city, err := getCityByCep(ctx, cepParam)
+func (s *WeatherService) GetWeather(ctx context.Context, cep string) (Weather, error) {
+	city, err := s.getCityByCep(ctx, cep)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return Weather{}, err
 	}
 
-	wheatherApiResponse, err := getWheatherByCity(ctx, city)
+	wheatherApiResponse, err := s.getWeatherByCity(ctx, city)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return Weather{}, err
 	}
-	wheater := Wheater{
+	wheater := Weather{
 		Celsius:    wheatherApiResponse.Current.TempC,
 		Fahrenheit: wheatherApiResponse.Current.TempF,
 		Kelvin:     wheatherApiResponse.Current.TempC + 273,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(wheater)
-
+	return wheater, nil
 }
 
-func getCityByCep(ctx context.Context, cep string) (City, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", viaCepApiUrl+"/"+cep+"/json", nil)
+func (s *WeatherService) getCityByCep(ctx context.Context, cep string) (City, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", s.cfg.ViaCepApiUrl+"/"+cep+"/json", nil)
 	if err != nil {
 		return City{}, err
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := s.client.Do(req)
 	if err != nil {
 		return City{}, err
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return City{}, ErrCepInvalid
+	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -113,31 +122,39 @@ func getCityByCep(ctx context.Context, cep string) (City, error) {
 		return City{}, err
 	}
 
+	if city.Erro {
+		return City{}, ErrCepNotFound
+	}
+
 	return city, nil
 }
 
-func getWheatherByCity(ctx context.Context, city City) (WheaterApiResponse, error) {
+func (s *WeatherService) getWeatherByCity(ctx context.Context, city City) (WeatherApiResponse, error) {
 
-	req, err := http.NewRequestWithContext(ctx, "GET", wheaterApiUrl+"?key="+API_KEY+"&q="+url.QueryEscape(city.Localidade), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.cfg.WeatherApiUrl+"?key="+s.cfg.ApiKey+"&q="+url.QueryEscape(city.Localidade), nil)
 	if err != nil {
-		return WheaterApiResponse{}, err
+		return WeatherApiResponse{}, err
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := s.client.Do(req)
 	if err != nil {
-		return WheaterApiResponse{}, err
+		return WeatherApiResponse{}, err
 	}
 	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return WheaterApiResponse{}, err
+	if res.StatusCode != http.StatusOK {
+		return WeatherApiResponse{}, ErrWeatherCityInvalid
 	}
 
-	var wheaterApiResponse WheaterApiResponse
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return WeatherApiResponse{}, err
+	}
+
+	var wheaterApiResponse WeatherApiResponse
 	err = json.Unmarshal(body, &wheaterApiResponse)
 	if err != nil {
-		return WheaterApiResponse{}, err
+		return WeatherApiResponse{}, err
 	}
 
 	return wheaterApiResponse, nil
