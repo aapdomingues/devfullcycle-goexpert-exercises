@@ -101,7 +101,7 @@ func TestWeatherHandler_GetWeatherByCityHandler(t *testing.T) {
 
 		handler.GetWeatherByCityHandler(rr, req)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
 		assert.Equal(t, "invalid zipcode", rr.Body.String())
 	})
 
@@ -113,7 +113,7 @@ func TestWeatherHandler_GetWeatherByCityHandler(t *testing.T) {
 
 		handler.GetWeatherByCityHandler(rr, req)
 
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
 		assert.Equal(t, "invalid zipcode", rr.Body.String())
 	})
 }

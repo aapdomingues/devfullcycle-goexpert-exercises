@@ -25,14 +25,14 @@ func (h *WeatherHandler) GetWeatherByCityHandler(w http.ResponseWriter, r *http.
 
 	cepParam := r.URL.Query().Get("cep")
 	if len(cepParam) != 8 {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte("invalid zipcode"))
 		return
 	}
 
 	_, err := strconv.Atoi(cepParam)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		w.Write([]byte("invalid zipcode"))
 		return
 	}
