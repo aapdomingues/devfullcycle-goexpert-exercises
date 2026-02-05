@@ -86,7 +86,7 @@ func TestWeatherService_GetWeather(t *testing.T) {
 		service := NewWeatherService(cfg, mockClient)
 
 		city := City{
-			Erro: true,
+			Erro: "true",
 		}
 		cityJson, _ := json.Marshal(city)
 

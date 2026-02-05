@@ -66,7 +66,7 @@ type City struct {
 	Unidade     string `json:"unidade"`
 	Ibge        string `json:"ibge"`
 	Gia         string `json:"gia"`
-	Erro        bool   `json:"erro"`
+	Erro        string `json:"erro"`
 }
 
 func NewWeatherService(cfg *config.Config, client httpclient.HTTPClient) *WeatherService {
@@ -122,7 +122,7 @@ func (s *WeatherService) getCityByCep(ctx context.Context, cep string) (City, er
 		return City{}, err
 	}
 
-	if city.Erro {
+	if city.Erro == "true" {
 		return City{}, ErrCepNotFound
 	}
 
