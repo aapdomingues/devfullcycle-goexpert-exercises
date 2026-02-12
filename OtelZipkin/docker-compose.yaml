@@ -1,0 +1,44 @@
+services:
+  service_a:
+    build: 
+      context: .
+      dockerfile: ./service_A/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SERVICE_B_API_URL: "http://service_b:8081"
+    depends_on:
+      - service_b
+  service_b:
+    build: 
+      context: .
+      dockerfile: ./service_B/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      API_KEY: <YOUR_WEATHERAPI_API_KEY>
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./.docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "1888:1888"   # pprof extension
+      - "13133:13133" # health_check extension
+      - "4317:4317"   # OTLP gRPC receiver
+      # - "4318:4318"   # OTLP HTTP receiver
+      - "55679:55679" # zpages extension
+    depends_on:
+      - zipkin
+    
+  zipkin:
+    image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
+    container_name: zipkin
+    environment:
+      - STORAGE_TYPE=mem
+    ports:
+      # Port used for the Zipkin UI and HTTP Api
+      - 9411:9411
+    
