@@ -2,8 +2,6 @@
 
 This application can be tested **locally using Docker Compose**.
 
----
-
 ### 🐳 Local (Docker Compose)
 
 #### Prerequisites
@@ -46,4 +44,21 @@ After the duration configured in the .env file (AUCTION_DURATION) has elapsed, y
 GET http://localhost:8080/auction/7ebb8193-06d8-4b60-acae-921d2926e0b5 HTTP/1.1
 Host: localhost:8080
 Content-Type: application/json
+```
+
+---
+
+## ✅ Automated Test (Makefile)
+
+There is an **integration test** that validates the auction is automatically marked as `Completed` after `AUCTION_DURATION`.
+
+### Prerequisites
+- Docker + Docker Compose (MongoDB)
+- Make
+
+### Run
+
+Run everything with a single command:
+```bash
+make test
 ```
