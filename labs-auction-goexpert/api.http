@@ -1,0 +1,19 @@
+POST http://localhost:8080/auction HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{
+    "product_name":"Smartphone",
+    "category":"Electronics",
+    "description":"Smartphone with high performance",
+    "condition":1
+}
+
+###
+GET http://localhost:8080/auction/7ebb8193-06d8-4b60-acae-921d2926e0b5 HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+
+
+

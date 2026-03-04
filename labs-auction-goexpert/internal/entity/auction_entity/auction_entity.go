@@ -3,7 +3,6 @@ package auction_entity
 import (
 	"context"
 	"fullcycle-auction_go/internal/internal_error"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,14 +12,13 @@ func CreateAuction(
 	productName, category, description string,
 	condition ProductCondition) (*Auction, *internal_error.InternalError) {
 	auction := &Auction{
-		Id:           uuid.New().String(),
-		ProductName:  productName,
-		Category:     category,
-		Description:  description,
-		Condition:    condition,
-		Status:       Active,
-		Timestamp:    time.Now(),
-		DtExpiration: time.Now().Add(getAuctionDuration()),
+		Id:          uuid.New().String(),
+		ProductName: productName,
+		Category:    category,
+		Description: description,
+		Condition:   condition,
+		Status:      Active,
+		Timestamp:   time.Now(),
 	}
 
 	if err := auction.Validate(); err != nil {
@@ -35,8 +33,7 @@ func (au *Auction) Validate() *internal_error.InternalError {
 		len(au.Category) <= 2 ||
 		len(au.Description) <= 10 && (au.Condition != New &&
 			au.Condition != Refurbished &&
-			au.Condition != Used) ||
-		au.DtExpiration.Before(time.Now()) {
+			au.Condition != Used) {
 		return internal_error.NewBadRequestError("invalid auction object")
 	}
 
@@ -44,14 +41,13 @@ func (au *Auction) Validate() *internal_error.InternalError {
 }
 
 type Auction struct {
-	Id           string
-	ProductName  string
-	Category     string
-	Description  string
-	Condition    ProductCondition
-	Status       AuctionStatus
-	Timestamp    time.Time
-	DtExpiration time.Time
+	Id          string
+	ProductName string
+	Category    string
+	Description string
+	Condition   ProductCondition
+	Status      AuctionStatus
+	Timestamp   time.Time
 }
 
 type ProductCondition int
@@ -80,13 +76,4 @@ type AuctionRepositoryInterface interface {
 
 	FindAuctionById(
 		ctx context.Context, id string) (*Auction, *internal_error.InternalError)
-}
-
-func getAuctionDuration() time.Duration {
-	auctionDurationConfig := os.Getenv("AUCTION_DURATION")
-	auctionDuration, err := time.ParseDuration(auctionDurationConfig)
-	if err != nil {
-		auctionDuration = 1 * time.Minute
-	}
-	return auctionDuration
 }
