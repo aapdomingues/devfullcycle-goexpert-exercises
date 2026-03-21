@@ -1,6 +1,11 @@
 package configs
 
-import "github.com/spf13/viper"
+import (
+	"errors"
+	"os"
+
+	"github.com/spf13/viper"
+)
 
 type conf struct {
 	DBDriver          string `mapstructure:"DB_DRIVER"`
@@ -33,7 +38,8 @@ func LoadConfig(path string) (*conf, error) {
 	viper.SetDefault("GRAPHQL_SERVER_PORT", "8080")
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		var configFileNotFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &configFileNotFound) && !os.IsNotExist(err) {
 			return nil, err
 		}
 	}

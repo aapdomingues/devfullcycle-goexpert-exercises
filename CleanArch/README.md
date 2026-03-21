@@ -10,7 +10,7 @@ Esse comando:
 
 - sobe MySQL e RabbitMQ
 - aguarda os servicos ficarem disponiveis
-- aplica as migrations automaticamente no startup do container `app`
+- aplica as migrations automaticamente no startup da aplicacao Go
 - inicia a aplicacao Go
 
 ## Portas

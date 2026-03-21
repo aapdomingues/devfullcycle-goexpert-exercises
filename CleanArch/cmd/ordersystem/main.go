@@ -18,6 +18,9 @@ import (
 
 	graphql_handler "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/golang-migrate/migrate/v4"
+	mysqlmigrate "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
@@ -38,6 +41,10 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
+
+	if err := runMigrations(db, "sql/migrations"); err != nil {
+		panic(err)
+	}
 
 	rabbitMQChannel := getRabbitMQChannel(configs.RabbitMQURL)
 
@@ -104,6 +111,25 @@ func connectDBWithRetry(driver, user, password, host, port, name string) (*sql.D
 		log.Printf("Erro ao conectar no banco: %v. Tentando novamente em 3s...\n", err)
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func runMigrations(db *sql.DB, migrationsPath string) error {
+	driver, err := mysqlmigrate.WithInstance(db, &mysqlmigrate.Config{})
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance("file://"+migrationsPath, "mysql", driver)
+	if err != nil {
+		return err
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+
+	log.Println("Migrations aplicadas com sucesso")
+	return nil
 }
 
 func connectWithRetry(url string) *amqp.Connection {

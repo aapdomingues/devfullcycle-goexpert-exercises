@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -47,5 +48,7 @@ func (s *WebServer) Start() {
 	for _, handlerConfig := range s.HandlersConfig {
 		s.Router.MethodFunc(handlerConfig.Method, handlerConfig.Path, handlerConfig.Handler)
 	}
-	http.ListenAndServe(s.WebServerPort, s.Router)
+	if err := http.ListenAndServe(":"+s.WebServerPort, s.Router); err != nil {
+		log.Printf("error starting web server: %v", err)
+	}
 }
