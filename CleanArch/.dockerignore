@@ -1,0 +1,5 @@
+.git
+.docker
+bin
+tmp
+coverage.out

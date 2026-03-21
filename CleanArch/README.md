@@ -1,54 +1,38 @@
-# 🧾 Desafio CleanArch
+# Desafio CleanArch
 
-## 🚀 Pré-requisitos
-
-Certifique-se de ter instalado:
-
-- **Go** (versão recomendada: 1.24+)  
-- **Docker** e **Docker Compose**  
-- **Make**
-
----
-
-## 📦 Configuração do Ambiente
-
-Siga os passos abaixo após clonar o repositório:
-
-### 1️⃣ Instalar dependências Go
-
-Após o clone, execute:
+## Execucao
 
 ```sh
-go mod tidy
+docker compose up --build
 ```
 
-### 2️⃣ Executar o comando makefile para iniciar todo o ambiente
+Esse comando:
 
-```sh
-make init
-```
+- sobe MySQL e RabbitMQ
+- aguarda os servicos ficarem disponiveis
+- aplica as migrations automaticamente no startup do container `app`
+- inicia a aplicacao Go
 
-Isso iniciará todos os serviços auxiliares exigidos pela aplicação (banco de dados e rabbitMQ), aplicará a migration necessária e por último subirá a aplicação.
+## Portas
 
-A aplicação estará pronta para receber requisições.
+- REST: `http://localhost:8000/order`
+- GraphQL Playground: `http://localhost:8080/`
+- GraphQL Query endpoint: `http://localhost:8080/query`
+- gRPC: `localhost:50051`
+- RabbitMQ Management: `http://localhost:15672`
 
-### 🌐 Testando a API (REST)
+## Testes manuais
 
-Você pode enviar requisições REST utilizando o arquivo:
+Use o arquivo [api/api.http](/CleanArch/api/api.http) para:
 
-- api/api.http
+- criar uma order via REST
+- listar as orders via REST
 
-Ele contém exemplos prontos para uso em extensões como REST Client (VS Code)
-
-### 🌐 Testando via GraphQL ou GRPC
-
-- GraphQL
-
-Para comunicação via GraphQL você pode utilizar o console playground do próprio GraphQl através do link http://localhost:8080/
+Exemplo de query GraphQL:
 
 ```graphql
-query queryOrders{
-  orders{
+query ListOrders {
+  orders {
     id
     Price
     Tax
@@ -57,13 +41,11 @@ query queryOrders{
 }
 ```
 
-- GRPC
+Exemplo no Evans para gRPC:
 
-Você pode utilizar o próprio client Evans para as chamadas GRPC.
-
-```
-evans -r repl
-  package pb
-    service OrderService
-      call ListOrders
+```txt
+evans -r repl -p 50051
+package pb
+service OrderService
+call ListOrders
 ```

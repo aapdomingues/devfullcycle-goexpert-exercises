@@ -33,13 +33,13 @@ func main() {
 		panic(err)
 	}
 
-	db, err := sql.Open(configs.DBDriver, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", configs.DBUser, configs.DBPassword, configs.DBHost, configs.DBPort, configs.DBName))
+	db, err := connectDBWithRetry(configs.DBDriver, configs.DBUser, configs.DBPassword, configs.DBHost, configs.DBPort, configs.DBName)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	rabbitMQChannel := getRabbitMQChannel()
+	rabbitMQChannel := getRabbitMQChannel(configs.RabbitMQURL)
 
 	eventDispatcher := events.NewEventDispatcher()
 	eventDispatcher.Register("OrderCreated", &handler.OrderCreatedHandler{
@@ -79,8 +79,8 @@ func main() {
 	http.ListenAndServe(":"+configs.GraphQLServerPort, nil)
 }
 
-func getRabbitMQChannel() *amqp.Channel {
-	conn := connectWithRetry("amqp://guest:guest@localhost:5672/")
+func getRabbitMQChannel(url string) *amqp.Channel {
+	conn := connectWithRetry(url)
 	ch, err := conn.Channel()
 	if err != nil {
 		panic(err)
@@ -88,11 +88,29 @@ func getRabbitMQChannel() *amqp.Channel {
 	return ch
 }
 
+func connectDBWithRetry(driver, user, password, host, port, name string) (*sql.DB, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", user, password, host, port, name)
+	for {
+		db, err := sql.Open(driver, dsn)
+		if err == nil {
+			if pingErr := db.Ping(); pingErr == nil {
+				log.Println("Conectado ao banco de dados")
+				return db, nil
+			}
+			err = db.Ping()
+			db.Close()
+		}
+
+		log.Printf("Erro ao conectar no banco: %v. Tentando novamente em 3s...\n", err)
+		time.Sleep(3 * time.Second)
+	}
+}
+
 func connectWithRetry(url string) *amqp.Connection {
 	for {
 		conn, err := amqp.Dial(url)
 		if err == nil {
-			log.Println("✅ Conectado ao RabbitMQ")
+			log.Println("Conectado ao RabbitMQ")
 			return conn
 		}
 
